@@ -2,12 +2,16 @@ from datapipeline.feature_engineer import generate_export_report
 import streamlit as st
 import pandas as pd
 
-def render_sidebar(repo,min_time, max_time):
+def render_sidebar(repo,viewers,min_time, max_time):
     with st.sidebar:    
+        st.subheader("視圖模式")
+        layout_mode = st.radio(
+            "視圖模式",
+            viewers,
+            label_visibility="collapsed" 
+        )
         
-        viewers = ["經典儀表板", "趨勢優先視角", "左右非對稱佈局", 
-                    "分頁精簡模式", "地理熱點視角","垂直故事線視角"]
-        layout_mode = viewers[3]
+        st.divider()
         st.subheader("數據篩選")
         with st.container(border=True):
             start, end = st.slider(

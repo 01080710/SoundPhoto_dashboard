@@ -14,7 +14,10 @@ import pandas as pd
 
 #-- 頁面設定與配置 --# 
 st.set_page_config(page_title="🔊噪音事件稽查儀表板", layout="wide")
+viewers = ["經典儀表板", "趨勢優先視角", "左右非對稱佈局", 
+            "分頁精簡模式", "地理熱點視角","垂直故事線視角"]
 width, height = 600, 450
+
 
 #-- 建立資料庫連線 --# 
 try:
@@ -28,7 +31,7 @@ except Exception as e:
     st.stop()  
 
 #-- Sidebar --# 
-layout_mode,filtered_df = render_sidebar(repo,min_time,max_time)
+layout_mode,filtered_df = render_sidebar(repo,viewers,min_time,max_time)
 df = pd.DataFrame(filtered_df)
 data               = casecount(df, 'determination')                ### Metric1: 預先計算案件總數，供指標卡使用
 fig_area           = politicalarea_chart(df, width, height)        ### Chart 1: 行政區層級結構
