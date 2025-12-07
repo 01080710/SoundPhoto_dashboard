@@ -1,6 +1,10 @@
 from datapipeline.feature_engineer import generate_export_report
 import streamlit as st
 import pandas as pd
+import os
+
+db_path = os.getenv('db_path')
+db = 'sqlite3' if db_path and os.path.exists(db_path) and os.path.splitext(db_path)[1].lower() == ".db" else 'mssql'
 
 def render_sidebar(repo,viewers,min_time, max_time):
     with st.sidebar:    
@@ -21,8 +25,8 @@ def render_sidebar(repo,viewers,min_time, max_time):
                 value=(min_time, max_time),
                 format="YYYY-MM-DD"
             )
-            
-        sites = repo.get_sites(start, end)
+        
+        sites = repo.get_sites(db,start, end)
         with st.expander("📍 移動站點", expanded=False):
             sites_button = st.multiselect(
                 "", options=sites, default=sites,
@@ -30,7 +34,7 @@ def render_sidebar(repo,viewers,min_time, max_time):
             )
             st.caption(f"已選擇 {len(sites_button)} 個站點")
 
-        reasons = repo.get_reasons(start, end)
+        reasons = repo.get_reasons(db,start, end)
         with st.expander("⚠️ 事件類型", expanded=False):
             reasons_button = st.multiselect("", options=reasons, default=reasons)
             st.caption(f"已選擇 {len(reasons_button)} 個事件類型")
@@ -41,7 +45,8 @@ def render_sidebar(repo,viewers,min_time, max_time):
             temp_button  = st.slider("溫度範圍", 0, 94, (30,35))
             wind_compare = ">=" if wind_button == "大於0.5m/s" else "<"
             like_conditions = " OR ".join([f"reason LIKE '%{reason}%'" if reason != '' else "reason LIKE ''" for reason in reasons_button] ) if reasons_button else "1=1"
-            filtered_df = repo.get_filtered_data(start,
+            filtered_df = repo.get_filtered_data(db,
+                                                start,
                                                 end, 
                                                 sites = sites_button, 
                                                 like_conditions = like_conditions,                                         
