@@ -54,8 +54,9 @@ git clone <repo-url>
 cd <project-folder>
 ```
 
-### 2. 設定環境變數
+### 2. 設定變數
 
+- 環境變數(MSSQL)
 專案需使用 `.env` 系統設定參數檔案，所有運行所需的連線資訊與服務設定皆在此檔案中進行管理。
 
 以下為 `.env` 所需的參數格式（*不含實際值*）：
@@ -65,6 +66,20 @@ DB_SERVER=<internal-db-ip>
 DB_DATABASE=<db-name>
 DB_UID=<db-username>
 DB_PWD=<db-password>
+```
+
+- 環境變數(SQLITE3)
+若使用 SQLite3，無需設定資料庫伺服器與帳號密碼等資訊，只需取得 .db 檔案並放置於容器內指定位置（例如 /app）。
+
+請向具備權限之相關人員取得 NoBuSystem_Mobile.db，並於建置 Docker Image 時放置在 /app 目錄下。
+
+SQLite 的資料庫路徑會在 docker-compose.yml 中透過 environment 參數指定，例如：
+
+```.yaml
+
+volumes:
+    - ./NoBuSystem_Mobile.db:/app/NoBuSystem_Mobile.db
+
 ```
 
 
