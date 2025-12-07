@@ -10,7 +10,7 @@ class ExceedRepository:
     def get_time_range(self):
         stmt = text("""
             SELECT MIN(measurementdatetime), MAX(measurementdatetime) 
-            FROM dbo.exceed
+            FROM exceed
         """)
         start, end = self.conn.execute(stmt).fetchone()
 
@@ -22,10 +22,16 @@ class ExceedRepository:
 
     # 取得所有站點
     def get_sites(self,start,end):
+        # stmt = text("""
+        #     SELECT DISTINCT areaid 
+        #     FROM exceed
+        #     WHERE TRY_CAST(measurementdatetime AS datetime) BETWEEN :start AND :end
+        #     ORDER BY areaid ASC
+        # """)
         stmt = text("""
             SELECT DISTINCT areaid 
             FROM exceed
-            WHERE TRY_CAST(measurementdatetime AS datetime) BETWEEN :start AND :end
+            WHERE measurementdatetime BETWEEN :start AND :end
             ORDER BY areaid ASC
         """)
         result = self.conn.execute(stmt, {"start": start, "end": end}).fetchall()
@@ -35,24 +41,44 @@ class ExceedRepository:
 
     # 取得所有原因
     def get_reasons(self,start,end):
-        stmt = text("""SELECT
+        # stmt = text("""SELECT
+        #         CASE
+        #             WHEN reason IS NULL OR reason IN ('null', '') THEN N'未分類'
+        #             WHEN reason LIKE '%[a-zA-Z0-9]%' THEN N'未分類'
+        #             WHEN CHARINDEX(':', reason) > 0 THEN LEFT(reason, CHARINDEX(':', reason) - 1)
+        #             ELSE reason
+        #         END AS reason1,
+        #         COUNT(*) AS count,
+        #         ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) AS percentage 
+        #     FROM exceed
+        #     WHERE TRY_CAST(measurementdatetime AS datetime) BETWEEN :start AND :end
+        #     GROUP BY
+        #         CASE
+        #             WHEN reason IS NULL OR reason IN ('null', '') THEN N'未分類'
+        #             WHEN reason LIKE '%[a-zA-Z0-9]%' THEN N'未分類'
+        #             WHEN CHARINDEX(':', reason) > 0 THEN LEFT(reason, CHARINDEX(':', reason) - 1)
+        #             ELSE reason
+        #         END
+        # """)
+        stmt = text("""
+                SELECT
                 CASE
-                    WHEN reason IS NULL OR reason IN ('null', '') THEN N'未分類'
-                    WHEN reason LIKE '%[a-zA-Z0-9]%' THEN N'未分類'
-                    WHEN CHARINDEX(':', reason) > 0 THEN LEFT(reason, CHARINDEX(':', reason) - 1)
+                    WHEN reason IS NULL OR reason IN ('null', '') THEN '未分類'
+                    WHEN reason GLOB '*[A-Za-z0-9]*' THEN '未分類'
+                    WHEN instr(reason, ':') > 0 THEN substr(reason, 1, instr(reason, ':') - 1)
                     ELSE reason
                 END AS reason1,
                 COUNT(*) AS count,
-                ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) AS percentage 
+                ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) AS percentage
             FROM exceed
-            WHERE TRY_CAST(measurementdatetime AS datetime) BETWEEN :start AND :end
+            WHERE measurementdatetime BETWEEN :start AND :end
             GROUP BY
                 CASE
-                    WHEN reason IS NULL OR reason IN ('null', '') THEN N'未分類'
-                    WHEN reason LIKE '%[a-zA-Z0-9]%' THEN N'未分類'
-                    WHEN CHARINDEX(':', reason) > 0 THEN LEFT(reason, CHARINDEX(':', reason) - 1)
+                    WHEN reason IS NULL OR reason IN ('null', '') THEN '未分類'
+                    WHEN reason GLOB '*[A-Za-z0-9]*' THEN '未分類'
+                    WHEN instr(reason, ':') > 0 THEN substr(reason, 1, instr(reason, ':') - 1)
                     ELSE reason
-                END
+                END;
         """)
         result = self.conn.execute(stmt, {"start": start, "end": end}).fetchall()
         reasons = [row[0] for row in result]
@@ -64,26 +90,45 @@ class ExceedRepository:
     def get_filtered_data(self,start,end,sites,like_conditions,noise_level, 
                           temp_min, temp_max, wind_compare,wind_speed):
 
-        stmt = text(f"""
-                (
-                    SELECT *
-                    FROM exceed
-                    WHERE 
-                        TRY_CAST(measurementdatetime AS datetime) BETWEEN :start AND :end
-                        AND areaid IN :sites
-                        AND lmax >= :noise_level
-                        AND (
-                            (:wind_compare = '>=' AND windspeed >= :wind_speed)
-                            OR (:wind_compare = '<'  AND windspeed <  :wind_speed)
-                        )
-                        AND tempture BETWEEN :temp_min AND :temp_max
-                        AND ({like_conditions})   -- 包含關鍵字
-                )
-                ORDER BY measurementdatetime ASC
-            """).bindparams(
-                bindparam("sites", expanding=True)
-            )
+        # stmt = text(f"""
+        #         (
+        #             SELECT *
+        #             FROM exceed
+        #             WHERE 
+        #                 TRY_CAST(measurementdatetime AS datetime) BETWEEN :start AND :end
+        #                 AND areaid IN :sites
+        #                 AND lmax >= :noise_level
+        #                 AND (
+        #                     (:wind_compare = '>=' AND windspeed >= :wind_speed)
+        #                     OR (:wind_compare = '<'  AND windspeed <  :wind_speed)
+        #                 )
+        #                 AND tempture BETWEEN :temp_min AND :temp_max
+        #                 AND ({like_conditions})   -- 包含關鍵字
+        #         )
+        #         ORDER BY measurementdatetime ASC
+        #     """).bindparams(
+        #         bindparam("sites", expanding=True)
+        #     )
       
+        stmt = text(f"""
+            SELECT *
+            FROM exceed
+            WHERE
+                measurementdatetime BETWEEN :start AND :end
+                AND areaid IN :sites
+                AND lmax >= :noise_level
+                AND (
+                    (:wind_compare = '>=' AND windspeed >= :wind_speed)
+                    OR (:wind_compare = '<'  AND windspeed <  :wind_speed)
+                )
+                AND tempture BETWEEN :temp_min AND :temp_max
+                AND ({like_conditions})
+            ORDER BY measurementdatetime ASC
+        """).bindparams(
+            bindparam("sites", expanding=True)
+        )
+
+
         params = {
             'start': start,
             'end': end,

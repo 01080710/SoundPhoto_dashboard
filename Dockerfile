@@ -18,8 +18,6 @@ RUN apt-get update && apt-get install -y \
     && apt-get update && ACCEPT_EULA=Y apt-get install -y msodbcsql17 \
     && apt-get clean && rm -rf /var/lib/apt/lists/* microsoft.gpg
 
-
-
 # 設定工作目錄
 WORKDIR /app
 
@@ -37,3 +35,4 @@ EXPOSE 8501
 
 # 設定容器啟動時執行的命令
 CMD ["streamlit", "run", "main.py", "--server.address=0.0.0.0", "--server.port=8501"]
+
